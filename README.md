@@ -1,12 +1,51 @@
-# 🏥 Patient Registration App (PGlite)
+# Patient Registration App with PGlite
 
-A simple, frontend-only app to register and manage patients using **PGlite** (SQLite in the browser) + **IndexedDB**. No backend or server required — works fully offline.
+## 📋 Setup & Usage Instructions
+
+Follow the steps below to set up and run the patient registration app:
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Sun10ny/patient-registration-pglite.git
+cd patient-registration-pglite
+```
+
+### 2. Project Overview
+
+This is a **frontend-only app** built using:
+
+- **HTML**
+- **CSS**
+- **JavaScript**
+- **PGlite** for client-side SQLite support
+
+### ✨ Features
+
+- 📝 Register new patients via a form  
+- 🛠️ Run raw SQL queries on the local database  
+- 💾 Keep data persistent across refreshes  
+- 🔄 Sync patient data between browser tabs using **BroadcastChannel**
+
+### 3. Run the App
+
+You can open the `index.html` file **directly in your browser** to run the application. No server setup is required.
 
 ---
 
-## 🚀 Quick Start
+## ✅ Commit History (May 22, 2025)
 
-1. **Clone the Repo**
-```bash
-git clone https://github.com/your-username/patient-registration-pglite.git
-cd patient-registration-pglite
+| Commit Message                                                               
+|--------------------------------------------------------------------------------|---------------|----------|
+| 🔍 **Checklist to Fix the 404 Error**                                         
+| 📄 **Update static.yml**                                                    
+| 🆕 **Create static.yml**                                                     
+| 🎉 **Project initialized: Patient Registration App with PGlite is ready to go!** 
+| ⚙️ **Set-Up Complted**                       
+| 🟢 **Initial commit**                                                      
+
+---
+
+## 🔗 Repository
+
+GitHub: [Sun10ny/patient-registration-pglite](https://github.com/Sun10ny/patient-registration-pglite)
