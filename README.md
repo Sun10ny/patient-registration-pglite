@@ -35,8 +35,8 @@ You can open the `index.html` file **directly in your browser** to run the appli
 
 ## ✅ Commit History (May 22, 2025)
 
-| Commit Message                                                               
-|--------------------------------------------------------------------------------|---------------|----------|
+| Commit Message  
+
 | 🔍 **Checklist to Fix the 404 Error**                                         
 | 📄 **Update static.yml**                                                    
 | 🆕 **Create static.yml**                                                     
