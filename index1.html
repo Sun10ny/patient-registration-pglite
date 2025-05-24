@@ -79,24 +79,21 @@
 <body>
   <h2>Patient Registration Form</h2>
   <form id="patientForm">
+    <!-- form fields unchanged -->
     <input type="text" id="name" placeholder="Full Name" required pattern="[A-Za-z ]+" title="Name should contain only letters and spaces." />
     <input type="number" id="age" placeholder="Age" required min="0" max="120" />
-
     <label for="gender">Gender:</label>
     <select id="gender" required>
       <option value="">--Select--</option>
       <option value="Male">Male</option>
       <option value="Female">Female</option>
     </select>
-
     <label for="dob">Date of Birth:</label>
     <input type="date" id="dob" required />
-
     <input type="tel" id="phone" placeholder="Phone Number" required pattern="^(?!0+$)([1-9][0-9]{9})$" title="Enter a valid 10-digit phone number not starting with 0 or all zeros." />
     <input type="email" id="email" placeholder="Email Address" />
     <textarea id="address" placeholder="Address" required></textarea>
     <input type="text" id="condition" placeholder="Medical Condition" required />
-
     <label for="bloodGroup">Blood Group:</label>
     <select id="bloodGroup">
       <option value="">--Select--</option>
@@ -109,25 +106,18 @@
       <option value="O+">O+</option>
       <option value="O-">O-</option>
     </select>
-
     <input type="text" id="allergies" placeholder="Allergies (if any)" />
     <input type="tel" id="emergencyContact" placeholder="Emergency Contact" required pattern="^(?!0+$)([1-9][0-9]{9})$" title="Enter a valid 10-digit phone number not starting with 0 or all zeros." />
-
     <label for="insurance">Insurance Provider:</label>
     <input type="text" id="insurance" placeholder="Insurance Provider (if any)" />
-
     <label for="doctor">Preferred Doctor:</label>
     <input type="text" id="doctor" placeholder="Preferred Doctor" pattern="[A-Za-z ]+" title="Doctor name should only contain letters and spaces." />
-
     <label for="admissionDate">Admission Date:</label>
     <input type="date" id="admissionDate" required />
-
     <label for="dischargeDate">Expected Discharge Date:</label>
     <input type="date" id="dischargeDate" />
-
     <label for="guardian">Guardian/Attendant Name:</label>
     <input type="text" id="guardian" placeholder="Guardian/Attendant Name" pattern="[A-Za-z ]+" title="Name should contain only letters and spaces." />
-
     <button type="button" id="registerBtn">Register</button>
   </form>
 
@@ -153,12 +143,24 @@
     import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js';
     const db = new PGlite('idb://patient-db2');
 
-    
+    // BroadcastChannel for cross-tab sync
     const bc = new BroadcastChannel('patients_sync');
+    let refreshTimeout;
     bc.onmessage = async (event) => {
       if (event.data === 'refreshPatients') {
-        await loadPatients();
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(loadPatients, 100);
       }
+    };
+
+    // Monkey-patch query to auto-broadcast on writes
+    const origQuery = db.query.bind(db);
+    db.query = async (sql, params) => {
+      const res = await origQuery(sql, params);
+      if (/^(INSERT|UPDATE|DELETE)/i.test(sql.trim())) {
+        bc.postMessage('refreshPatients');
+      }
+      return res;
     };
 
     async function initializeDb() {
@@ -260,8 +262,6 @@
         alert('Patient registered successfully!');
         form.reset();
         await loadPatients();
-        
-        bc.postMessage('refreshPatients');
       } catch (error) {
         alert('Error registering patient: ' + error.message);
       }
