@@ -153,6 +153,14 @@
     import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js';
     const db = new PGlite('idb://patient-db1');
 
+    
+    const bc = new BroadcastChannel('patients_sync');
+    bc.onmessage = async (event) => {
+      if (event.data === 'refreshPatients') {
+        await loadPatients();
+      }
+    };
+
     async function initializeDb() {
       await db.exec(`
         CREATE TABLE IF NOT EXISTS patients (
@@ -252,6 +260,8 @@
         alert('Patient registered successfully!');
         form.reset();
         await loadPatients();
+        
+        bc.postMessage('refreshPatients');
       } catch (error) {
         alert('Error registering patient: ' + error.message);
       }
