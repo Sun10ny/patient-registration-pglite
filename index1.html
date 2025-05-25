@@ -79,7 +79,7 @@
 <body>
   <h2>Patient Registration Form</h2>
   <form id="patientForm">
-    <input type="text" id="name" placeholder="Full Name" required pattern="[A-Za-z ]+" title="Name should contain only letters and spaces." />
+    <input type="text" id="name" placeholder="Full Name" required pattern="[A-Za-z ]+" />
     <input type="number" id="age" placeholder="Age" required min="0" max="120" />
 
     <label for="gender">Gender:</label>
@@ -92,7 +92,7 @@
     <label for="dob">Date of Birth:</label>
     <input type="date" id="dob" required />
 
-    <input type="tel" id="phone" placeholder="Phone Number" required pattern="^(?!0+$)([1-9][0-9]{9})$" title="Enter a valid 10-digit phone number not starting with 0 or all zeros." />
+    <input type="tel" id="phone" placeholder="Phone Number" required pattern="^(?!0+$)([1-9][0-9]{9})$" />
     <input type="email" id="email" placeholder="Email Address" />
     <textarea id="address" placeholder="Address" required></textarea>
     <input type="text" id="condition" placeholder="Medical Condition" required />
@@ -111,13 +111,13 @@
     </select>
 
     <input type="text" id="allergies" placeholder="Allergies (if any)" />
-    <input type="tel" id="emergencyContact" placeholder="Emergency Contact" required pattern="^(?!0+$)([1-9][0-9]{9})$" title="Enter a valid 10-digit phone number not starting with 0 or all zeros." />
+    <input type="tel" id="emergencyContact" placeholder="Emergency Contact" required pattern="^(?!0+$)([1-9][0-9]{9})$" />
 
     <label for="insurance">Insurance Provider:</label>
     <input type="text" id="insurance" placeholder="Insurance Provider (if any)" />
 
     <label for="doctor">Preferred Doctor:</label>
-    <input type="text" id="doctor" placeholder="Preferred Doctor" pattern="[A-Za-z ]+" title="Doctor name should only contain letters and spaces." />
+    <input type="text" id="doctor" placeholder="Preferred Doctor" pattern="[A-Za-z ]+" />
 
     <label for="admissionDate">Admission Date:</label>
     <input type="date" id="admissionDate" required />
@@ -126,7 +126,7 @@
     <input type="date" id="dischargeDate" />
 
     <label for="guardian">Guardian/Attendant Name:</label>
-    <input type="text" id="guardian" placeholder="Guardian/Attendant Name" pattern="[A-Za-z ]+" title="Name should contain only letters and spaces." />
+    <input type="text" id="guardian" placeholder="Guardian/Attendant Name" pattern="[A-Za-z ]+" />
 
     <button type="button" id="registerBtn">Register</button>
   </form>
@@ -150,13 +150,13 @@
   </div>
 
   <script type="module">
-    import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite/dist/index.js';
-    const db = new PGlite('idb://patient-db2');
+    import { PGlite } from "https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.4/dist/index.js";
 
-    // Use BroadcastChannel for multi-tab synchronization
-    const bc = new BroadcastChannel('patients_sync');
+    const db = new PGlite("idb://patients_db");
+
+    const bc = new BroadcastChannel("patients_sync");
     bc.onmessage = async (event) => {
-      if (event.data === 'refreshPatients') {
+      if (event.data === "refreshPatients") {
         await loadPatients();
       }
     };
@@ -185,28 +185,26 @@
     }
 
     async function loadPatients() {
-      // Fetch minimal columns for the table to improve performance
-      const result = await db.query('SELECT name, age, gender, phone, email, condition, doctor FROM patients');
-      const tbody = document.querySelector('#patientTable tbody');
-      tbody.innerHTML = '';
+      const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
+      const tbody = document.querySelector("#patientTable tbody");
+      tbody.innerHTML = "";
 
-      for (const row of result.rows) {
-        const tr = document.createElement('tr');
+      result.rows.forEach((row) => {
+        const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${row.name}</td>
           <td>${row.age}</td>
           <td>${row.gender}</td>
           <td>${row.phone}</td>
-          <td>${row.email || ''}</td>
+          <td>${row.email || ""}</td>
           <td>${row.condition}</td>
-          <td>${row.doctor || ''}</td>
+          <td>${row.doctor || ""}</td>
         `;
         tbody.appendChild(tr);
-      }
+      });
     }
 
     async function addPatient(patient) {
-      // Use a parameterized query to prevent SQL injection
       await db.query(
         `INSERT INTO patients (
           name, age, gender, dob, phone, email, address, condition,
@@ -214,8 +212,7 @@
           admissionDate, dischargeDate, guardian
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13,
-          $14, $15, $16
+          $9, $10, $11, $12, $13, $14, $15, $16
         )`,
         [
           patient.name, patient.age, patient.gender, patient.dob, patient.phone,
@@ -224,40 +221,38 @@
           patient.admissionDate, patient.dischargeDate, patient.guardian
         ]
       );
-      // Notify other tabs to update data
-      bc.postMessage('refreshPatients');
+      bc.postMessage("refreshPatients");
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener("DOMContentLoaded", async () => {
       await initializeDb();
       await loadPatients();
     });
 
-    document.getElementById('registerBtn').addEventListener('click', async () => {
-      const form = document.getElementById('patientForm');
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      const form = document.getElementById("patientForm");
       if (!form.checkValidity()) {
         form.reportValidity();
         return;
       }
 
-      // Gather and trim input values, set optional fields to null if empty
       const patient = {
-        name: document.getElementById('name').value.trim(),
-        age: parseInt(document.getElementById('age').value, 10),
-        gender: document.getElementById('gender').value,
-        dob: document.getElementById('dob').value,
-        phone: document.getElementById('phone').value.trim(),
-        email: document.getElementById('email').value.trim() || null,
-        address: document.getElementById('address').value.trim(),
-        condition: document.getElementById('condition').value.trim(),
-        bloodGroup: document.getElementById('bloodGroup').value || null,
-        allergies: document.getElementById('allergies').value.trim() || null,
-        emergencyContact: document.getElementById('emergencyContact').value.trim(),
-        insurance: document.getElementById('insurance').value.trim() || null,
-        doctor: document.getElementById('doctor').value.trim() || null,
-        admissionDate: document.getElementById('admissionDate').value,
-        dischargeDate: document.getElementById('dischargeDate').value || null,
-        guardian: document.getElementById('guardian').value.trim() || null,
+        name: document.getElementById("name").value.trim(),
+        age: parseInt(document.getElementById("age").value, 10),
+        gender: document.getElementById("gender").value,
+        dob: document.getElementById("dob").value,
+        phone: document.getElementById("phone").value.trim(),
+        email: document.getElementById("email").value.trim() || null,
+        address: document.getElementById("address").value.trim(),
+        condition: document.getElementById("condition").value.trim(),
+        bloodGroup: document.getElementById("bloodGroup").value || null,
+        allergies: document.getElementById("allergies").value.trim() || null,
+        emergencyContact: document.getElementById("emergencyContact").value.trim(),
+        insurance: document.getElementById("insurance").value.trim() || null,
+        doctor: document.getElementById("doctor").value.trim() || null,
+        admissionDate: document.getElementById("admissionDate").value,
+        dischargeDate: document.getElementById("dischargeDate").value || null,
+        guardian: document.getElementById("guardian").value.trim() || null,
       };
 
       await addPatient(patient);
