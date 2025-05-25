@@ -69,6 +69,21 @@
       color: white;
       font-weight: bold;
     }
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .refresh-btn {
+      background-color: #4CAF50;
+      margin: 10px auto;
+      display: block;
+      width: 200px;
+    }
+    .refresh-btn:hover {
+      background-color: #45a049;
+    }
     @media (max-width: 768px) {
       th, td {
         font-size: 13px;
@@ -118,9 +133,11 @@
     <label for="guardian">Guardian/Attendant Name:</label>
     <input type="text" id="guardian" placeholder="Guardian/Attendant Name" pattern="[A-Za-z ]+" title="Name should contain only letters and spaces." />
     <button type="button" id="registerBtn">Register</button>
+    <div id="formMessage"></div>
   </form>
 
   <h2>Registered Patients</h2>
+  <button type="button" class="refresh-btn" id="refreshBtn">Refresh Table</button>
   <div class="table-container">
     <table id="patientTable">
       <thead>
@@ -143,6 +160,7 @@
 
     // Initialize database with fallback
     let db;
+    let syncEnabled = true;
     try {
       const worker = new PGliteWorker('patients_db_worker');
       db = new PGlite('idb://patient-db2', { multiTabWorker: worker });
@@ -150,6 +168,8 @@
     } catch (error) {
       console.error("Worker initialization failed, falling back to single-tab mode:", error);
       db = new PGlite('idb://patient-db2');
+      syncEnabled = false;
+      showMessage("Multi-tab sync disabled due to environment restrictions. Data will not sync across tabs. Use Refresh button in other tabs.", "error", 15000);
     }
 
     // Broadcast channel for cross-tab updates (fallback)
@@ -187,7 +207,8 @@
         console.log("Database initialized successfully.");
       } catch (error) {
         console.error("Error initializing database:", error);
-        alert('Error initializing database: ' + error.message);
+        showMessage("Error initializing database: " + error.message, "error");
+        throw error;
       }
     }
 
@@ -213,7 +234,7 @@
         console.log("Patients loaded:", result.rows);
       } catch (error) {
         console.error("Error loading patients:", error);
-        alert('Error loading patients: ' + error.message);
+        showMessage("Error loading patients: " + error.message, "error");
       }
     }
 
@@ -242,7 +263,7 @@
         console.log("Live query set up successfully.");
       } catch (error) {
         console.error("Error setting up live query, relying on BroadcastChannel:", error);
-        alert('Error setting up live query: ' + error.message);
+        showMessage("Live query failed, sync may be delayed. Use Refresh button in other tabs.", "error", 10000);
       }
     }
 
@@ -273,15 +294,26 @@
       }
     }
 
+    function showMessage(message, type, duration = 5000) {
+      console.log(`Showing message: ${message} (${type})`);
+      const messageDiv = document.getElementById("formMessage");
+      messageDiv.innerHTML = `<p class="${type}">${message}</p>`;
+      setTimeout(() => {
+        messageDiv.innerHTML = "";
+      }, duration);
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         console.log("DOM loaded, initializing app...");
         await initializeDb();
         await loadPatients();
-        await setupLiveQuery();
+        if (syncEnabled) {
+          await setupLiveQuery();
+        }
       } catch (error) {
         console.error("Error during initialization:", error);
-        alert('Error during initialization: ' + error.message);
+        showMessage("Initialization failed: " + error.message, "error");
       }
     });
 
@@ -289,6 +321,7 @@
       const form = document.getElementById('patientForm');
       if (!form.checkValidity()) {
         form.reportValidity();
+        showMessage("Please fill all required fields correctly.", "error");
         return;
       }
 
@@ -317,9 +350,18 @@
         form.reset();
         await loadPatients();
         bc.postMessage('refreshPatients');
+        if (!syncEnabled) {
+          showMessage("Multi-tab sync is disabled. Use Refresh button in other tabs to see new data.", "error", 15000);
+        }
       } catch (error) {
-        alert('Error registering patient: ' + error.message);
+        showMessage("Error registering patient: " + error.message, "error");
       }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      console.log("Manual refresh triggered...");
+      await loadPatients();
+      showMessage("Table refreshed manually.", "error", 3000);
     });
   </script>
 </body>
