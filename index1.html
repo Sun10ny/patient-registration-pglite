@@ -147,8 +147,12 @@
   // Setup BroadcastChannel listener as early as possible
   bc.onmessage = async (event) => {
     if (event.data === "refreshPatients") {
-      console.log("Received sync message - reloading patients...");
-      await loadPatients();
+      console.log("Received sync message from another tab - reloading patients...");
+      try {
+        await loadPatients();
+      } catch (err) {
+        console.error("Error while reloading patients after sync:", err);
+      }
     }
   };
 
@@ -176,23 +180,27 @@
   }
 
   async function loadPatients() {
-    const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
-    const tbody = document.querySelector("#patientTable tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    result.rows.forEach((row) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${row.name}</td>
-        <td>${row.age}</td>
-        <td>${row.gender}</td>
-        <td>${row.phone}</td>
-        <td>${row.email || ""}</td>
-        <td>${row.condition}</td>
-        <td>${row.doctor || ""}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+    try {
+      const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
+      const tbody = document.querySelector("#patientTable tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      result.rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.name}</td>
+          <td>${row.age}</td>
+          <td>${row.gender}</td>
+          <td>${row.phone}</td>
+          <td>${row.email || ""}</td>
+          <td>${row.condition}</td>
+          <td>${row.doctor || ""}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error("Failed to load patients:", err);
+    }
   }
 
   async function addPatient(patient) {
@@ -213,7 +221,7 @@
       ]
     );
     console.log("Patient added. Broadcasting update...");
-    bc.postMessage("refreshPatients");
+    bc.postMessage("refreshPatients"); // Notify other tabs
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
@@ -246,9 +254,9 @@
         guardian: document.getElementById("guardian").value.trim() || null,
       };
 
-      await addPatient(patient);
-      await loadPatients(); // Immediate UI update for current tab
-      form.reset();
+      await addPatient(patient);   // Store to DB + broadcast
+      await loadPatients();        // Update current tab
+      form.reset();                // Reset form
     });
   });
 </script>
