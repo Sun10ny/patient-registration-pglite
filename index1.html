@@ -139,116 +139,119 @@
   </div>
 
   <script type="module">
-    import { PGlite } from "https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.4/dist/index.js";
+  import { PGlite } from "https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.4/dist/index.js";
 
-    const db = new PGlite("idb://patients_db");
-    const bc = new BroadcastChannel("patients_sync");
+  const db = new PGlite("idb://patients_db");
+  const bc = new BroadcastChannel("patients_sync");
 
-    async function initializeDb() {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS patients (
-          name TEXT NOT NULL,
-          age INTEGER NOT NULL,
-          gender TEXT NOT NULL,
-          dob TEXT NOT NULL,
-          phone TEXT NOT NULL,
-          email TEXT,
-          address TEXT NOT NULL,
-          condition TEXT NOT NULL,
-          bloodGroup TEXT,
-          allergies TEXT,
-          emergencyContact TEXT NOT NULL,
-          insurance TEXT,
-          doctor TEXT,
-          admissionDate TEXT NOT NULL,
-          dischargeDate TEXT,
-          guardian TEXT
-        );
-      `);
-    }
-
-    async function loadPatients() {
-      const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
-      const tbody = document.querySelector("#patientTable tbody");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      result.rows.forEach((row) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${row.name}</td>
-          <td>${row.age}</td>
-          <td>${row.gender}</td>
-          <td>${row.phone}</td>
-          <td>${row.email || ""}</td>
-          <td>${row.condition}</td>
-          <td>${row.doctor || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function addPatient(patient) {
-      await db.query(
-        `INSERT INTO patients (
-          name, age, gender, dob, phone, email, address, condition,
-          bloodGroup, allergies, emergencyContact, insurance, doctor,
-          admissionDate, dischargeDate, guardian
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8,
-          $9, $10, $11, $12, $13, $14, $15, $16
-        )`,
-        [
-          patient.name, patient.age, patient.gender, patient.dob, patient.phone,
-          patient.email, patient.address, patient.condition, patient.bloodGroup,
-          patient.allergies, patient.emergencyContact, patient.insurance, patient.doctor,
-          patient.admissionDate, patient.dischargeDate, patient.guardian
-        ]
-      );
-      bc.postMessage("refreshPatients");
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      await initializeDb();
+  // Setup BroadcastChannel listener as early as possible
+  bc.onmessage = async (event) => {
+    if (event.data === "refreshPatients") {
+      console.log("Received sync message - reloading patients...");
       await loadPatients();
+    }
+  };
 
-      // BroadcastChannel sync setup (after DB initialized)
-      bc.onmessage = async (event) => {
-        if (event.data === "refreshPatients") {
-          await loadPatients();
-        }
+  async function initializeDb() {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS patients (
+        name TEXT NOT NULL,
+        age INTEGER NOT NULL,
+        gender TEXT NOT NULL,
+        dob TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT,
+        address TEXT NOT NULL,
+        condition TEXT NOT NULL,
+        bloodGroup TEXT,
+        allergies TEXT,
+        emergencyContact TEXT NOT NULL,
+        insurance TEXT,
+        doctor TEXT,
+        admissionDate TEXT NOT NULL,
+        dischargeDate TEXT,
+        guardian TEXT
+      );
+    `);
+  }
+
+  async function loadPatients() {
+    const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
+    const tbody = document.querySelector("#patientTable tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    result.rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.name}</td>
+        <td>${row.age}</td>
+        <td>${row.gender}</td>
+        <td>${row.phone}</td>
+        <td>${row.email || ""}</td>
+        <td>${row.condition}</td>
+        <td>${row.doctor || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function addPatient(patient) {
+    await db.query(
+      `INSERT INTO patients (
+        name, age, gender, dob, phone, email, address, condition,
+        bloodGroup, allergies, emergencyContact, insurance, doctor,
+        admissionDate, dischargeDate, guardian
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15, $16
+      )`,
+      [
+        patient.name, patient.age, patient.gender, patient.dob, patient.phone,
+        patient.email, patient.address, patient.condition, patient.bloodGroup,
+        patient.allergies, patient.emergencyContact, patient.insurance, patient.doctor,
+        patient.admissionDate, patient.dischargeDate, patient.guardian
+      ]
+    );
+    console.log("Patient added. Broadcasting update...");
+    bc.postMessage("refreshPatients");
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await initializeDb();
+    await loadPatients();
+
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      const form = document.getElementById("patientForm");
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const patient = {
+        name: document.getElementById("name").value.trim(),
+        age: parseInt(document.getElementById("age").value, 10),
+        gender: document.getElementById("gender").value,
+        dob: document.getElementById("dob").value,
+        phone: document.getElementById("phone").value.trim(),
+        email: document.getElementById("email").value.trim() || null,
+        address: document.getElementById("address").value.trim(),
+        condition: document.getElementById("condition").value.trim(),
+        bloodGroup: document.getElementById("bloodGroup").value || null,
+        allergies: document.getElementById("allergies").value.trim() || null,
+        emergencyContact: document.getElementById("emergencyContact").value.trim(),
+        insurance: document.getElementById("insurance").value.trim() || null,
+        doctor: document.getElementById("doctor").value.trim() || null,
+        admissionDate: document.getElementById("admissionDate").value,
+        dischargeDate: document.getElementById("dischargeDate").value || null,
+        guardian: document.getElementById("guardian").value.trim() || null,
       };
 
-      document.getElementById("registerBtn").addEventListener("click", async () => {
-        const form = document.getElementById("patientForm");
-        if (!form.checkValidity()) {
-          form.reportValidity();
-          return;
-        }
-
-        const patient = {
-          name: document.getElementById("name").value.trim(),
-          age: parseInt(document.getElementById("age").value, 10),
-          gender: document.getElementById("gender").value,
-          dob: document.getElementById("dob").value,
-          phone: document.getElementById("phone").value.trim(),
-          email: document.getElementById("email").value.trim() || null,
-          address: document.getElementById("address").value.trim(),
-          condition: document.getElementById("condition").value.trim(),
-          bloodGroup: document.getElementById("bloodGroup").value || null,
-          allergies: document.getElementById("allergies").value.trim() || null,
-          emergencyContact: document.getElementById("emergencyContact").value.trim(),
-          insurance: document.getElementById("insurance").value.trim() || null,
-          doctor: document.getElementById("doctor").value.trim() || null,
-          admissionDate: document.getElementById("admissionDate").value,
-          dischargeDate: document.getElementById("dischargeDate").value || null,
-          guardian: document.getElementById("guardian").value.trim() || null,
-        };
-
-        await addPatient(patient);
-        await loadPatients();
-        form.reset();
-      });
+      await addPatient(patient);
+      await loadPatients(); // Immediate UI update for current tab
+      form.reset();
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>
