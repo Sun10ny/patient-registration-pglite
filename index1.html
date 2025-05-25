@@ -81,22 +81,18 @@
   <form id="patientForm">
     <input type="text" id="name" placeholder="Full Name" required pattern="[A-Za-z ]+" />
     <input type="number" id="age" placeholder="Age" required min="0" max="120" />
-
     <label for="gender">Gender:</label>
     <select id="gender" required>
       <option value="">--Select--</option>
       <option value="Male">Male</option>
       <option value="Female">Female</option>
     </select>
-
     <label for="dob">Date of Birth:</label>
     <input type="date" id="dob" required />
-
     <input type="tel" id="phone" placeholder="Phone Number" required pattern="^(?!0+$)([1-9][0-9]{9})$" />
     <input type="email" id="email" placeholder="Email Address" />
     <textarea id="address" placeholder="Address" required></textarea>
     <input type="text" id="condition" placeholder="Medical Condition" required />
-
     <label for="bloodGroup">Blood Group:</label>
     <select id="bloodGroup">
       <option value="">--Select--</option>
@@ -109,25 +105,18 @@
       <option value="O+">O+</option>
       <option value="O-">O-</option>
     </select>
-
     <input type="text" id="allergies" placeholder="Allergies (if any)" />
     <input type="tel" id="emergencyContact" placeholder="Emergency Contact" required pattern="^(?!0+$)([1-9][0-9]{9})$" />
-
     <label for="insurance">Insurance Provider:</label>
     <input type="text" id="insurance" placeholder="Insurance Provider (if any)" />
-
     <label for="doctor">Preferred Doctor:</label>
     <input type="text" id="doctor" placeholder="Preferred Doctor" pattern="[A-Za-z ]+" />
-
     <label for="admissionDate">Admission Date:</label>
     <input type="date" id="admissionDate" required />
-
     <label for="dischargeDate">Expected Discharge Date:</label>
     <input type="date" id="dischargeDate" />
-
     <label for="guardian">Guardian/Attendant Name:</label>
     <input type="text" id="guardian" placeholder="Guardian/Attendant Name" pattern="[A-Za-z ]+" />
-
     <button type="button" id="registerBtn">Register</button>
   </form>
 
@@ -153,13 +142,7 @@
     import { PGlite } from "https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.4/dist/index.js";
 
     const db = new PGlite("idb://patients_db");
-
     const bc = new BroadcastChannel("patients_sync");
-    bc.onmessage = async (event) => {
-      if (event.data === "refreshPatients") {
-        await loadPatients();
-      }
-    };
 
     async function initializeDb() {
       await db.exec(`
@@ -187,8 +170,8 @@
     async function loadPatients() {
       const result = await db.query("SELECT name, age, gender, phone, email, condition, doctor FROM patients");
       const tbody = document.querySelector("#patientTable tbody");
+      if (!tbody) return;
       tbody.innerHTML = "";
-
       result.rows.forEach((row) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -227,37 +210,44 @@
     document.addEventListener("DOMContentLoaded", async () => {
       await initializeDb();
       await loadPatients();
-    });
 
-    document.getElementById("registerBtn").addEventListener("click", async () => {
-      const form = document.getElementById("patientForm");
-      if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-      }
-
-      const patient = {
-        name: document.getElementById("name").value.trim(),
-        age: parseInt(document.getElementById("age").value, 10),
-        gender: document.getElementById("gender").value,
-        dob: document.getElementById("dob").value,
-        phone: document.getElementById("phone").value.trim(),
-        email: document.getElementById("email").value.trim() || null,
-        address: document.getElementById("address").value.trim(),
-        condition: document.getElementById("condition").value.trim(),
-        bloodGroup: document.getElementById("bloodGroup").value || null,
-        allergies: document.getElementById("allergies").value.trim() || null,
-        emergencyContact: document.getElementById("emergencyContact").value.trim(),
-        insurance: document.getElementById("insurance").value.trim() || null,
-        doctor: document.getElementById("doctor").value.trim() || null,
-        admissionDate: document.getElementById("admissionDate").value,
-        dischargeDate: document.getElementById("dischargeDate").value || null,
-        guardian: document.getElementById("guardian").value.trim() || null,
+      // BroadcastChannel sync setup (after DB initialized)
+      bc.onmessage = async (event) => {
+        if (event.data === "refreshPatients") {
+          await loadPatients();
+        }
       };
 
-      await addPatient(patient);
-      await loadPatients();
-      form.reset();
+      document.getElementById("registerBtn").addEventListener("click", async () => {
+        const form = document.getElementById("patientForm");
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const patient = {
+          name: document.getElementById("name").value.trim(),
+          age: parseInt(document.getElementById("age").value, 10),
+          gender: document.getElementById("gender").value,
+          dob: document.getElementById("dob").value,
+          phone: document.getElementById("phone").value.trim(),
+          email: document.getElementById("email").value.trim() || null,
+          address: document.getElementById("address").value.trim(),
+          condition: document.getElementById("condition").value.trim(),
+          bloodGroup: document.getElementById("bloodGroup").value || null,
+          allergies: document.getElementById("allergies").value.trim() || null,
+          emergencyContact: document.getElementById("emergencyContact").value.trim(),
+          insurance: document.getElementById("insurance").value.trim() || null,
+          doctor: document.getElementById("doctor").value.trim() || null,
+          admissionDate: document.getElementById("admissionDate").value,
+          dischargeDate: document.getElementById("dischargeDate").value || null,
+          guardian: document.getElementById("guardian").value.trim() || null,
+        };
+
+        await addPatient(patient);
+        await loadPatients();
+        form.reset();
+      });
     });
   </script>
 </body>
