@@ -156,7 +156,8 @@
   </div>
 
   <script type="module">
-    import { PGlite, PGliteWorker } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.2.4/dist/index.js';
+    // Use local PGlite to avoid CDN issues
+    import { PGlite, PGliteWorker } from '/lib/pglite.js';
 
     // Initialize database with fallback
     let db;
@@ -164,12 +165,12 @@
     try {
       const worker = new PGliteWorker('patients_db_worker');
       db = new PGlite('idb://patient-db2', { multiTabWorker: worker });
-      console.log("Initialized PGlite with worker for multi-tab sync");
+      console.log("Initialized PGlite with worker for real-time multi-tab sync");
     } catch (error) {
       console.error("Worker initialization failed, falling back to single-tab mode:", error);
       db = new PGlite('idb://patient-db2');
       syncEnabled = false;
-      showMessage("Multi-tab sync disabled due to environment restrictions. Data will not sync across tabs. Use Refresh button in other tabs.", "error", 15000);
+      showMessage("Real-time sync disabled due to environment restrictions. Data will not update automatically across tabs. Use Refresh button in other tabs.", "error", 20000);
     }
 
     // Broadcast channel for cross-tab updates (fallback)
@@ -238,32 +239,41 @@
       }
     }
 
-    async function setupLiveQuery() {
-      try {
-        console.log("Setting up live query...");
-        const live = await db.live.query('SELECT name, age, gender, phone, email, condition, doctor FROM patients');
-        live.subscribe(result => {
-          console.log("Live query update received:", result.rows);
-          const tbody = document.querySelector('#patientTable tbody');
-          tbody.innerHTML = '';
-          for (const row of result.rows) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${row.name}</td>
-              <td>${row.age}</td>
-              <td>${row.gender}</td>
-              <td>${row.phone}</td>
-              <td>${row.email || ''}</td>
-              <td>${row.condition}</td>
-              <td>${row.doctor || ''}</td>
-            `;
-            tbody.appendChild(tr);
+    async function setupLiveQuery(retries = 3, delay = 1000) {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          console.log(`Setting up live query (attempt ${attempt}/${retries})...`);
+          const live = await db.live.query('SELECT name, age, gender, phone, email, condition, doctor FROM patients');
+          live.subscribe(result => {
+            console.log("Live query update received:", result.rows);
+            const tbody = document.querySelector('#patientTable tbody');
+            tbody.innerHTML = '';
+            for (const row of result.rows) {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${row.name}</td>
+                <td>${row.age}</td>
+                <td>${row.gender}</td>
+                <td>${row.phone}</td>
+                <td>${row.email || ''}</td>
+                <td>${row.condition}</td>
+                <td>${row.doctor || ''}</td>
+              `;
+              tbody.appendChild(tr);
+            }
+          });
+          console.log("Live query set up successfully.");
+          return; // Success, exit retry loop
+        } catch (error) {
+          console.error(`Live query setup failed (attempt ${attempt}/${retries}):`, error);
+          if (attempt < retries) {
+            console.log(`Retrying live query setup in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            console.error("All live query retries failed, relying on BroadcastChannel.");
+            showMessage("Real-time sync failed to initialize. Updates may require manual refresh. Use Refresh button in other tabs.", "error", 20000);
           }
-        });
-        console.log("Live query set up successfully.");
-      } catch (error) {
-        console.error("Error setting up live query, relying on BroadcastChannel:", error);
-        showMessage("Live query failed, sync may be delayed. Use Refresh button in other tabs.", "error", 10000);
+        }
       }
     }
 
@@ -351,7 +361,7 @@
         await loadPatients();
         bc.postMessage('refreshPatients');
         if (!syncEnabled) {
-          showMessage("Multi-tab sync is disabled. Use Refresh button in other tabs to see new data.", "error", 15000);
+          showMessage("Real-time sync is disabled. Use Refresh button in other tabs to see new data.", "error", 20000);
         }
       } catch (error) {
         showMessage("Error registering patient: " + error.message, "error");
